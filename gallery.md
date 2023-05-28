@@ -10,7 +10,8 @@ Slug: {{ call $root.Slug .Name }}
 
 <!-- TODO: buttons for filtering with isotope -->
 
-<div class="grid" id="the-gallery" data-isotope='{"itemSelector": ".grid-item", "layoutMode": "masonry"}'>
+<div class="grid" id="the-gallery">
+<div class="grid-sizer"></div>
 {{ range .PiArr -}}
 <div class="grid-item{{ if .IsPanorama }} grid-item-wide{{ end }}">
   <a href="{{ $root.DeployHref }}{{ .Filename }}"

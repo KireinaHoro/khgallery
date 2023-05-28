@@ -165,6 +165,7 @@ func main() {
 	<-collectChan
 
 	// shuffle the photos
+	// TODO: sort temporally (shuffle should be done in js)
 	rand.Shuffle(len(gl.PiArr), func(i, j int) {
 		gl.PiArr[i], gl.PiArr[j] = gl.PiArr[j], gl.PiArr[i]
 	})
@@ -175,8 +176,21 @@ func main() {
 		DeployHref:    deploymentHref,
 		ThumbnailsDir: thumbnailsDirName,
 	}
-	err = glTmpl.Execute(os.Stdout, ctx)
+
+	outName := filepath.Join(scanDir, "..", "..", "Gallery", "test.md")
+	out, err := os.Create(outName)
+	if err != nil {
+		log.Fatalf("failed to open output file: %s", err)
+	}
+	defer func() {
+		err = out.Close()
+		if err != nil {
+			log.Fatalf("failed to close output file: %s", err)
+		}
+	}()
+	err = glTmpl.Execute(out, ctx)
 	if err != nil {
 		log.Fatalf("failed to generate gallery markdown page: %s", err)
 	}
+	log.Printf("Written output %s", outName)
 }
