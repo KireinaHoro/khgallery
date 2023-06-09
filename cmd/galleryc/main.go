@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"golang.org/x/image/draw"
 	"html/template"
 	"image"
 	"image/jpeg"
+	pb "khgallery/khgallery"
 	"log"
 	"math/rand"
 	"os"
@@ -16,16 +18,18 @@ import (
 )
 
 // TODO: scan recursively instead of assuming flat structure
-const scanDir = "/Users/jsteward/work/jsteward.moe/content/images/gallery/"
-const thumbnailsDirName = "thumbnails/"
-const thumbnailsDir = scanDir + thumbnailsDirName
-const deploymentHref = "/images/gallery/"
-const thumbnailWidthRegular = 500
-const thumbnailWidthPanorama = 2000
-const panoramaRatio = 5 // width >= 5 * height
-const templateName = "gallery.md"
+var (
+	scanDir                = flag.String("scanDir", "/Users/jsteward/work/jsteward.moe/content/images/gallery/", "directory to scan for raw photos")
+	thumbnailsDirName      = flag.String("thumbnailsDirName", "thumbnails/", "name of target thumbnails directory")
+	thumbnailsDir          = *scanDir + *thumbnailsDirName
+	deploymentHref         = flag.String("deploymentHref", "/images/gallery/", "HTML href for the deployment images root")
+	thumbnailWidthRegular  = flag.Int("thumbnailWidthRegular", 500, "width of regular thumbnail")
+	thumbnailWidthPanorama = flag.Int("thumbnailWidthPanorama", 2000, "width of panorama thumbnail")
+	panoramaRatio          = flag.Int("panoramaRatio", 5, "threshold aspect ratio for image to be recognised as a panorama") // width >= 5 * height
+	templateName           = flag.String("templateName", "gallery.md", "name of the html/template file")
+)
 
-var glTmpl = template.Must(template.New(templateName).ParseFiles(templateName))
+var glTmpl = template.Must(template.New(*templateName).ParseFiles(*templateName))
 
 // A PhotoInfo contains all metadata of a photo needed to generate the photoswipe/isotope <div> in the gallery page.
 type PhotoInfo struct {
@@ -44,7 +48,7 @@ type TemplateCtx struct {
 }
 
 type Gallery struct {
-	PiArr []PhotoInfo
+	PiArr []pb.PhotoInfo
 	Name  string
 	Date  string
 }
@@ -53,7 +57,7 @@ func slug(name string) string {
 	return strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 }
 
-func (gl *Gallery) pushPhoto(pi *PhotoInfo) {
+func (gl *Gallery) pushPhoto(pi *pb.PhotoInfo) {
 	gl.PiArr = append(gl.PiArr, *pi)
 }
 
@@ -61,7 +65,7 @@ func (gl *Gallery) pushPhoto(pi *PhotoInfo) {
 // related operations should be performed here; templating to create the gallery HTML is done in `galleryCodeGen`.
 func doSingleImage(fp os.DirEntry) (_ *PhotoInfo, err error) {
 	n := fp.Name()
-	path := filepath.Join(scanDir, n)
+	path := filepath.Join(*scanDir, n)
 	ext := filepath.Ext(n)
 	if ext != ".jpg" {
 		return nil, fmt.Errorf("unsupported extension name %s", ext)
@@ -87,9 +91,9 @@ func doSingleImage(fp os.DirEntry) (_ *PhotoInfo, err error) {
 		err = out.Close()
 	}(out)
 	isPanorama := false
-	thumbnailX := thumbnailWidthRegular
-	if sz.X/sz.Y >= panoramaRatio {
-		thumbnailX = thumbnailWidthPanorama
+	thumbnailX := *thumbnailWidthRegular
+	if sz.X/sz.Y >= *panoramaRatio {
+		thumbnailX = *thumbnailWidthPanorama
 		isPanorama = true
 	}
 	thumbnailY := thumbnailX * sz.Y / sz.X
@@ -120,7 +124,9 @@ func doSingleImage(fp os.DirEntry) (_ *PhotoInfo, err error) {
 }
 
 func main() {
-	files, err := os.ReadDir(scanDir)
+	flag.Parse()
+
+	files, err := os.ReadDir(*scanDir)
 	if err != nil {
 		panic(err)
 	}
@@ -173,11 +179,11 @@ func main() {
 	ctx := TemplateCtx{
 		Data:          gl,
 		Slug:          slug,
-		DeployHref:    deploymentHref,
-		ThumbnailsDir: thumbnailsDirName,
+		DeployHref:    *deploymentHref,
+		ThumbnailsDir: *thumbnailsDirName,
 	}
 
-	outName := filepath.Join(scanDir, "..", "..", "Gallery", "test.md")
+	outName := filepath.Join(*scanDir, "..", "..", "Gallery", "test.md")
 	out, err := os.Create(outName)
 	if err != nil {
 		log.Fatalf("failed to open output file: %s", err)
